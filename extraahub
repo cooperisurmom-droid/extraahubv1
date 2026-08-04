@@ -1,341 +1,431 @@
-local Players = clonereturn and cloneref(game:GetService("Players")) or game:GetService("Players")
-local RunService = clonereturn and cloneref(game:GetService("RunService")) or game:GetService("RunService")
-local UserInputService = clonereturn and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
-local HttpService = clonereturn and cloneref(game:GetService("HttpService")) or game:GetService("HttpService")
-local TweenService = clonereturn and cloneref(game:GetService("TweenService")) or game:GetService("TweenService")
+local Players = (clonereturn and cloneref(game:GetService("Players"))) or game:GetService("Players")
+local UserInputService = (clonereturn and cloneref(game:GetService("UserInputService"))) or game:GetService("UserInputService")
+local TweenService = (clonereturn and cloneref(game:GetService("TweenService"))) or game:GetService("TweenService")
+local RunService = (clonereturn and cloneref(game:GetService("RunService"))) or game:GetService("RunService")
+local HttpService = (clonereturn and cloneref(game:GetService("HttpService"))) or game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
-_G.VisualizerEnabled = true
+_G.VisualizerEnabled = false
 _G.MarkerSize = 11
 _G.HitboxOpacity = 0.7
 _G.CloseKeybind = Enum.KeyCode.Minus
 
 local savedConfigs = {}
-local uiParentFolder = nil
+local originalSizes = {}
+local currentTabFrame = nil
+local bindingKeyActive = false
+local trackingMouseActive = false
+local trackingOpacityActive = false
 
 local secureGuiSuccess, secureGuiTarget = pcall(function()
     return get_hidden_gui or gethui or game:GetService("CoreGui")
 end)
-
 if secureGuiSuccess and type(secureGuiTarget) == "function" then
     local callSuccess, callTarget = pcall(secureGuiTarget)
-    if callSuccess then
-        secureGuiTarget = callTarget
-    end
+    if callSuccess then secureGuiTarget = callTarget end
 end
+local uiParent = (secureGuiSuccess and type(secureGuiTarget) == "userdata" and secureGuiTarget) or LocalPlayer:WaitForChild("PlayerGui", 5)
 
-uiParentFolder = (secureGuiSuccess and type(secureGuiTarget) == "userdata" and secureGuiTarget) or LocalPlayer:WaitForChild("PlayerGui", 5)
+if uiParent:FindFirstChild("MaxHubCustomUi") then uiParent.MaxHubCustomUi:Destroy() end
 
-local existingGui = uiParentFolder:FindFirstChild("RayfieldHitboxGui")
-if existingGui then 
-    existingGui:Destroy() 
-    if setcloneref then
-        pcall(function() existingGui = nil end)
-    end
-end
-
-local ScreenGui = Instance.new("ScreenGui") 
-ScreenGui.Name = "RayfieldHitboxGui" 
+local ScreenGui = Instance.new("ScreenGui", uiParent)
+ScreenGui.Name = "MaxHubCustomUi"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+if typeof(setcloneref) == "function" then setcloneref(ScreenGui) end
 
-if syn and syn.protect_gui then 
-    syn.protect_gui(ScreenGui) 
-elseif typeof(setcloneref) == "function" then
-    setcloneref(ScreenGui)
-end 
-ScreenGui.Parent = uiParentFolder
+local MainWindow = Instance.new("Frame", ScreenGui)
+MainWindow.Size = UDim2.new(0, 520, 0, 365)
+MainWindow.Position = UDim2.new(0.5, -260, 0.5, -182)
+MainWindow.BackgroundColor3 = Color3.fromRGB(17, 21, 28)
+MainWindow.Active = false
+MainWindow.ClipsDescendants = true
+MainWindow.ZIndex = 1
+Instance.new("UICorner", MainWindow).CornerRadius = UDim.new(0, 6)
+local WindowStroke = Instance.new("UIStroke", MainWindow)
+WindowStroke.Color = Color3.fromRGB(33, 40, 52)
+WindowStroke.Thickness = 1.2
 
-local MainFrame = Instance.new("Frame", ScreenGui) 
-MainFrame.Size = UDim2.new(0, 480, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -240, 0.4, -160) 
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.Active = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 9)
+local DragHandle = Instance.new("TextButton", MainWindow)
+DragHandle.Size = UDim2.new(1, 0, 0, 30)
+DragHandle.BackgroundTransparency = 1
+DragHandle.Text = "  extraa hub | Westbound Head Extender Only"
+DragHandle.TextColor3 = Color3.fromRGB(255, 255, 255)
+DragHandle.Font = Enum.Font.GothamBold
+DragHandle.TextSize = 12
+DragHandle.TextXAlignment = Enum.TextXAlignment.Left
+DragHandle.ZIndex = 100
 
-local UIStroke = Instance.new("UIStroke", MainFrame)
-UIStroke.Color = Color3.fromRGB(35, 35, 45)
-UIStroke.Thickness = 1.5
+local Sidebar = Instance.new("Frame", MainWindow)
+Sidebar.Size = UDim2.new(0, 160, 1, -30)
+Sidebar.Position = UDim2.new(0, 0, 0, 30)
+Sidebar.BackgroundColor3 = Color3.fromRGB(25, 29, 41)
+Sidebar.Active = false
+Sidebar.ZIndex = 2
 
-local TitleBar = Instance.new("Frame", MainFrame) 
-TitleBar.Size = UDim2.new(1, 0, 0, 38) 
-TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 9)
+local SidebarDivider = Instance.new("Frame", Sidebar)
+SidebarDivider.Size = UDim2.new(0, 1, 1, 0)
+SidebarDivider.Position = UDim2.new(1, -1, 0, 0)
+SidebarDivider.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+SidebarDivider.BorderSizePixel = 0
+SidebarDivider.ZIndex = 3
 
-local TitleText = Instance.new("TextLabel", TitleBar) 
-TitleText.Size = UDim2.new(1, -20, 1, 0) 
-TitleText.Position = UDim2.new(0, 15) 
-TitleText.BackgroundTransparency = 1 
-TitleText.Text = "extraa hub | Westbound Head Extender Only" 
-TitleText.TextColor3 = Color3.fromRGB(240, 240, 240) 
-TitleText.Font = Enum.Font.GothamBold 
-TitleText.TextSize = 13 
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
+local TabContainer = Instance.new("ScrollingFrame", Sidebar)
+TabContainer.Size = UDim2.new(1, 0, 1, -10)
+TabContainer.Position = UDim2.new(0, 0, 0, 5)
+TabContainer.BackgroundTransparency = 1
+TabContainer.BorderSizePixel = 0
+TabContainer.ScrollBarThickness = 0
+TabContainer.ZIndex = 4
 
-local SidebarFrame = Instance.new("Frame", MainFrame)
-SidebarFrame.Size = UDim2.new(0, 130, 1, -38)
-SidebarFrame.Position = UDim2.new(0, 0, 0, 38)
-SidebarFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+local TabListLayout = Instance.new("UIListLayout", TabContainer)
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabListLayout.Padding = UDim.new(0, 2)
+TabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-local SideStroke = Instance.new("Frame", SidebarFrame)
-SideStroke.Size = UDim2.new(0, 1, 1, 0)
-SideStroke.Position = UDim2.new(1, -1, 0, 0)
-SideStroke.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-SideStroke.BorderSizePixel = 0
+local ContentFrame = Instance.new("Frame", MainWindow)
+ContentFrame.Size = UDim2.new(1, -160, 1, -30)
+ContentFrame.Position = UDim2.new(0, 160, 0, 30)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Active = false
+ContentFrame.ZIndex = 2
 
-local ContainerFrame = Instance.new("Frame", MainFrame)
-ContainerFrame.Size = UDim2.new(1, -130, 1, -38)
-ContainerFrame.Position = UDim2.new(0, 130, 0, 38)
-ContainerFrame.BackgroundTransparency = 1
+local function CreateCategoryHeader(text, order)
+    local Label = Instance.new("TextLabel", TabContainer)
+    Label.Size = UDim2.new(1, -24, 0, 24)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(75, 85, 105)
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 10
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.LayoutOrder = order
+    Label.ZIndex = 5
+end
 
-local MainTabFrame = Instance.new("Frame", ContainerFrame)
-MainTabFrame.Size = UDim2.new(1, 0, 1, 0)
-MainTabFrame.BackgroundTransparency = 1
+local function CreateHorizontalSectionDivider(order)
+    local LineFrame = Instance.new("Frame", TabContainer)
+    LineFrame.Size = UDim2.new(1, -16, 0, 1)
+    LineFrame.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+    LineFrame.BorderSizePixel = 0
+    LineFrame.LayoutOrder = order
+    LineFrame.ZIndex = 5
+end
 
-local ConfigTabFrame = Instance.new("Frame", ContainerFrame)
-ConfigTabFrame.Size = UDim2.new(1, 0, 1, 0)
-ConfigTabFrame.BackgroundTransparency = 1
-ConfigTabFrame.Visible = false
+local function CreateTab(name, order)
+    local TabButton = Instance.new("TextButton", TabContainer)
+    TabButton.Size = UDim2.new(1, -12, 0, 32)
+    TabButton.BackgroundTransparency = 1
+    TabButton.Text = "      " .. name
+    TabButton.TextColor3 = Color3.fromRGB(140, 150, 170)
+    TabButton.Font = Enum.Font.GothamSemibold
+    TabButton.TextSize = 13
+    TabButton.TextXAlignment = Enum.TextXAlignment.Left
+    TabButton.LayoutOrder = order
+    TabButton.ZIndex = 6
 
-local AimbotTabFrame = Instance.new("Frame", ContainerFrame)
-AimbotTabFrame.Size = UDim2.new(1, 0, 1, 0)
-AimbotTabFrame.BackgroundTransparency = 1
-AimbotTabFrame.Visible = false
+    local PageFrame = Instance.new("ScrollingFrame", ContentFrame)
+    PageFrame.Size = UDim2.new(1, 0, 1, 0)
+    PageFrame.BackgroundTransparency = 1
+    PageFrame.BorderSizePixel = 0
+    PageFrame.Visible = false
+    PageFrame.ScrollBarThickness = 0
+    PageFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    PageFrame.AutomaticSize = Enum.AutomaticSize.Y
+    PageFrame.ZIndex = 5
+    
+    local ContentPadding = Instance.new("UIPadding", PageFrame)
+    ContentPadding.PaddingLeft = UDim.new(0, 15)
+    ContentPadding.PaddingTop = UDim.new(0, 15)
+    ContentPadding.PaddingRight = UDim.new(0, 15)
 
-local ComingSoonText = Instance.new("TextLabel", AimbotTabFrame)
-ComingSoonText.Size = UDim2.new(1, 0, 1, 0)
-ComingSoonText.Position = UDim2.new(0, 0, 0, 0)
-ComingSoonText.BackgroundTransparency = 1
-ComingSoonText.Text = "COMING SOON"
-ComingSoonText.TextColor3 = Color3.fromRGB(120, 125, 130)
-ComingSoonText.Font = Enum.Font.GothamBold
-ComingSoonText.TextSize = 22
-ComingSoonText.TextXAlignment = Enum.TextXAlignment.Center
-ComingSoonText.TextYAlignment = Enum.TextYAlignment.Center
+    local ContentLayout = Instance.new("UIListLayout", PageFrame)
+    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentLayout.Padding = UDim.new(0, 10)
 
-local Tab1Btn = Instance.new("TextButton", SidebarFrame)
-Tab1Btn.Size = UDim2.new(1, -16, 0, 28)
-Tab1Btn.Position = UDim2.new(0, 8, 0, 12)
-Tab1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-Tab1Btn.Text = "Main Controls"
-Tab1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Tab1Btn.Font = Enum.Font.GothamSemibold
-Tab1Btn.TextSize = 11
-Instance.new("UICorner", Tab1Btn).CornerRadius = UDim.new(0, 5)
+    TabButton.MouseButton1Click:Connect(function()
+        if currentTabFrame then
+            currentTabFrame.Button.BackgroundTransparency = 1
+            currentTabFrame.Button.TextColor3 = Color3.fromRGB(140, 150, 170)
+            currentTabFrame.Frame.Visible = false
+        end
+        currentTabFrame = {Button = TabButton, Frame = PageFrame}
+        TabButton.BackgroundTransparency = 0
+        TabButton.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+        TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 4)
+        PageFrame.Visible = true
+    end)
 
-local Tab2Btn = Instance.new("TextButton", SidebarFrame)
-Tab2Btn.Size = UDim2.new(1, -16, 0, 28)
-Tab2Btn.Position = UDim2.new(0, 8, 0, 46)
-Tab2Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-Tab2Btn.Text = "Configurations"
-Tab2Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-Tab2Btn.Font = Enum.Font.GothamSemibold
-Tab2Btn.TextSize = 11
-Instance.new("UICorner", Tab2Btn).CornerRadius = UDim.new(0, 5)
+    return PageFrame, TabButton
+end
 
-local Tab3Btn = Instance.new("TextButton", SidebarFrame)
-Tab3Btn.Size = UDim2.new(1, -16, 0, 28)
-Tab3Btn.Position = UDim2.new(0, 8, 0, 80)
-Tab3Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-Tab3Btn.Text = "Aimbot & esp"
-Tab3Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-Tab3Btn.Font = Enum.Font.GothamSemibold
-Tab3Btn.TextSize = 11
-Instance.new("UICorner", Tab3Btn).CornerRadius = UDim.new(0, 5)
+CreateCategoryHeader("MAIN", 1)
+local MainControlsPage, MainControlsBtn = CreateTab("Main Controls", 2)
+CreateHorizontalSectionDivider(3)
 
-local ToggleBtn = Instance.new("TextButton", MainTabFrame) 
-ToggleBtn.Size = UDim2.new(1, -30, 0, 34) 
-ToggleBtn.Position = UDim2.new(0, 15, 0, 15) 
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 125, 255)
-ToggleBtn.Text = "Status: Enabled" 
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255) 
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 11
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+CreateCategoryHeader("COMMON", 4)
+local AimbotEspPage, AimbotEspBtn = CreateTab("Aimbot & esp", 5)
+local UnsupportedGamesPage, UnsupportedGamesBtn = CreateTab("Unsupported Games", 6)
+CreateHorizontalSectionDivider(7)
 
-local SliderCard = Instance.new("Frame", MainTabFrame)
-SliderCard.Size = UDim2.new(1, -30, 0, 55)
-SliderCard.Position = UDim2.new(0, 15, 0, 60)
-SliderCard.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
-Instance.new("UICorner", SliderCard).CornerRadius = UDim.new(0, 6)
+CreateCategoryHeader("SETTINGS", 8)
+local ConfigsPage, ConfigsTabBtn = CreateTab("⚙️ Configs", 9)
 
-local SliderLabel = Instance.new("TextLabel", SliderCard) 
-SliderLabel.Size = UDim2.new(1, -20, 0, 20) 
-SliderLabel.Position = UDim2.new(0, 10, 0, 8) 
-SliderLabel.BackgroundTransparency = 1 
-SliderLabel.Text = "Target Size Multiplier: 11" 
-SliderLabel.TextColor3 = Color3.fromRGB(200, 200, 205) 
-SliderLabel.Font = Enum.Font.Gotham
-SliderLabel.TextSize = 11  
-SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+ConfigsTabBtn.LayoutOrder = 99
 
-local SliderTrack = Instance.new("Frame", SliderCard) 
-SliderTrack.Size = UDim2.new(1, -20, 0, 4) 
-SliderTrack.Position = UDim2.new(0, 10, 0, 36) 
-SliderTrack.BackgroundColor3 = Color3.fromRGB(40, 40, 45) 
-Instance.new("UICorner", SliderTrack).CornerRadius = UDim.new(0, 2)
+local UsefulControlsCard = Instance.new("Frame", MainControlsPage)
+UsefulControlsCard.Size = UDim2.new(1, 0, 0, 155)
+UsefulControlsCard.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
+UsefulControlsCard.BorderSizePixel = 0
+UsefulControlsCard.ZIndex = 6
+UsefulControlsCard.LayoutOrder = 1
+Instance.new("UICorner", UsefulControlsCard).CornerRadius = UDim.new(0, 5)
+local CardStroke = Instance.new("UIStroke", UsefulControlsCard)
+CardStroke.Color = Color3.fromRGB(33, 40, 52)
 
-local SliderFill = Instance.new("Frame", SliderTrack) 
-SliderFill.Size = UDim2.new((_G.MarkerSize - 5) / 95, 0, 1, 0) 
-SliderFill.BackgroundColor3 = Color3.fromRGB(0, 125, 255) 
-Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(0, 2)
+local CardTitle = Instance.new("TextLabel", UsefulControlsCard)
+CardTitle.Size = UDim2.new(1, -24, 0, 32)
+CardTitle.Position = UDim2.new(0, 12)
+CardTitle.BackgroundTransparency = 1
+CardTitle.Text = "Useful Controls"
+CardTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+CardTitle.Font = Enum.Font.GothamBold
+CardTitle.TextSize = 13
+CardTitle.TextXAlignment = Enum.TextXAlignment.Left
+CardTitle.ZIndex = 7
 
-local SliderHandle = Instance.new("TextButton", SliderTrack) 
-SliderHandle.Size = UDim2.new(0, 10, 0, 10) 
-SliderHandle.Position = UDim2.new((_G.MarkerSize - 5) / 95, -5, 0.5, -5) 
-SliderHandle.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
-SliderHandle.Text = ""
-Instance.new("UICorner", SliderHandle).CornerRadius = UDim.new(1, 0)
+local ToggleRow = Instance.new("Frame", UsefulControlsCard)
+ToggleRow.Size = UDim2.new(1, -24, 0, 32)
+ToggleRow.Position = UDim2.new(0, 12, 0, 38)
+ToggleRow.BackgroundTransparency = 1
+ToggleRow.ZIndex = 7
 
-local FolddownToggle = Instance.new("TextButton", MainTabFrame)
-FolddownToggle.Size = UDim2.new(1, -30, 0, 28)
-FolddownToggle.Position = UDim2.new(0, 15, 0, 125) 
-FolddownToggle.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
-FolddownToggle.Text = "  ▶  Hitbox Extender Settings"
-FolddownToggle.TextColor3 = Color3.fromRGB(230, 230, 235)
-FolddownToggle.Font = Enum.Font.GothamBold
-FolddownToggle.TextSize = 10
-FolddownToggle.TextXAlignment = Enum.TextXAlignment.Left
-Instance.new("UICorner", FolddownToggle).CornerRadius = UDim.new(0, 5)
+local ToggleLabel = Instance.new("TextLabel", ToggleRow)
+ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+ToggleLabel.BackgroundTransparency = 1
+ToggleLabel.Text = "Hitbox Extender Enabled"
+ToggleLabel.TextColor3 = Color3.fromRGB(200, 205, 215)
+ToggleLabel.Font = Enum.Font.GothamSemibold
+ToggleLabel.TextSize = 12
+ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+ToggleLabel.ZIndex = 8
 
-local FolddownContent = Instance.new("Frame", MainTabFrame)
-FolddownContent.Size = UDim2.new(1, -30, 0, 48)
-FolddownContent.Position = UDim2.new(0, 15, 0, 156)
-FolddownContent.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
-FolddownContent.Visible = false
-Instance.new("UICorner", FolddownContent).CornerRadius = UDim.new(0, 5)
+local TogglePill = Instance.new("TextButton", ToggleRow)
+TogglePill.Size = UDim2.new(0, 36, 0, 18)
+TogglePill.Position = UDim2.new(1, -36, 0.5, -9)
+TogglePill.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+TogglePill.Text = ""
+TogglePill.ZIndex = 8
+Instance.new("UICorner", TogglePill).CornerRadius = UDim.new(1, 0)
 
-local OpacityLabel = Instance.new("TextLabel", FolddownContent)
-OpacityLabel.Size = UDim2.new(1, -20, 0, 18)
-OpacityLabel.Position = UDim2.new(0, 10, 0, 6)
-OpacityLabel.BackgroundTransparency = 1
-OpacityLabel.Text = "Hitbox Opacity: 0.70"
-OpacityLabel.TextColor3 = Color3.fromRGB(180, 180, 185)
-OpacityLabel.Font = Enum.Font.Gotham
-OpacityLabel.TextSize = 10
-OpacityLabel.TextXAlignment = Enum.TextXAlignment.Left
+local ToggleBall = Instance.new("Frame", TogglePill)
+ToggleBall.Size = UDim2.new(0, 12, 0, 12)
+ToggleBall.Position = UDim2.new(0, 3, 0.5, -6)
+ToggleBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBall.BorderSizePixel = 0
+ToggleBall.ZIndex = 9
+Instance.new("UICorner", ToggleBall).CornerRadius = UDim.new(1, 0)
 
-local OpacityTrack = Instance.new("Frame", FolddownContent)
-OpacityTrack.Size = UDim2.new(1, -20, 0, 4)
-OpacityTrack.Position = UDim2.new(0, 10, 0, 30)
-OpacityTrack.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-Instance.new("UICorner", OpacityTrack).CornerRadius = UDim.new(0, 2)
+local function BuildPremiumSlider(parent, labelText, yPos, min, max, default, globalVarName, isOpacity)
+    local SliderRow = Instance.new("Frame", parent)
+    SliderRow.Size = UDim2.new(1, -24, 0, 34)
+    SliderRow.Position = UDim2.new(0, 12, 0, yPos)
+    SliderRow.BackgroundTransparency = 1
+    SliderRow.ZIndex = 7
 
-local OpacityFill = Instance.new("Frame", OpacityTrack)
-OpacityFill.Size = UDim2.new(_G.HitboxOpacity, 0, 1, 0)
-OpacityFill.BackgroundColor3 = Color3.fromRGB(0, 125, 255)
-Instance.new("UICorner", OpacityFill).CornerRadius = UDim.new(0, 2)
+    local Label = Instance.new("TextLabel", SliderRow)
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = labelText
+    Label.TextColor3 = Color3.fromRGB(200, 205, 215)
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.ZIndex = 8
 
-local OpacityHandle = Instance.new("TextButton", OpacityTrack)
-OpacityHandle.Size = UDim2.new(0, 10, 0, 10)
-OpacityHandle.Position = UDim2.new(_G.HitboxOpacity, -5, 0.5, -5)
-OpacityHandle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-OpacityHandle.Text = ""
-Instance.new("UICorner", OpacityHandle).CornerRadius = UDim.new(1, 0)
+    local ValueBox = Instance.new("Frame", SliderRow)
+    ValueBox.Size = UDim2.new(0, 36, 0, 20)
+    ValueBox.Position = UDim2.new(1, -36, 0.5, -10)
+    ValueBox.BackgroundColor3 = Color3.fromRGB(17, 21, 28)
+    ValueBox.ZIndex = 8
+    Instance.new("UICorner", ValueBox).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", ValueBox).Color = Color3.fromRGB(33, 40, 52)
 
-local KeybindBtn = Instance.new("TextButton", MainTabFrame)
-KeybindBtn.Size = UDim2.new(1, -30, 0, 32)
-KeybindBtn.Position = UDim2.new(0, 15, 0, 160)
-KeybindBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
-KeybindBtn.Text = "Minimalize GUI: [ Minus ]"
-KeybindBtn.TextColor3 = Color3.fromRGB(200, 200, 205)
+    local ValueLabel = Instance.new("TextLabel", ValueBox)
+    ValueLabel.Size = UDim2.new(1, 0, 1, 0)
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Text = isOpacity and string.format("%.1f", default) or tostring(default)
+    ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ValueLabel.Font = Enum.Font.GothamBold
+    ValueLabel.TextSize = 11
+    ValueLabel.ZIndex = 9
+
+    local Track = Instance.new("Frame", SliderRow)
+    Track.Size = UDim2.new(1, -50, 0, 3)
+    Track.Position = UDim2.new(0, 0, 1, -4)
+    Track.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+    Track.BorderSizePixel = 0
+    Track.ZIndex = 8
+
+    local Fill = Instance.new("Frame", Track)
+    local basePct = math.clamp((default - min) / (max - min), 0, 1)
+    Fill.Size = UDim2.new(basePct, 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(59, 130, 246)
+    Fill.BorderSizePixel = 0
+    Fill.ZIndex = 9
+
+    local Handle = Instance.new("TextButton", Track)
+    Handle.Size = UDim2.new(0, 10, 0, 10)
+    Handle.Position = UDim2.new(basePct, -5, 0.5, -5)
+    Handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Handle.Text = ""
+    Handle.ZIndex = 10
+    Instance.new("UICorner", Handle).CornerRadius = UDim.new(1, 0)
+
+    return Track, Fill, Handle, ValueLabel, min, max, isOpacity, globalVarName
+end
+
+local STrack, SFill, SHandle, SLabel, SMin, SMax, SIsOp, SVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Size Multiplier", 74, 5, 100, _G.MarkerSize, "MarkerSize", false)
+local OTrack, OFill, OHandle, OLabel, OMin, OMax, OIsOp, OVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Opacity Tracker", 112, 0, 1, _G.HitboxOpacity, "HitboxOpacity", true)
+
+local AdvancedSettingsCard = Instance.new("Frame", MainControlsPage)
+AdvancedSettingsCard.Size = UDim2.new(1, 0, 0, 105)
+AdvancedSettingsCard.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
+AdvancedSettingsCard.BorderSizePixel = 0
+AdvancedSettingsCard.ZIndex = 6
+AdvancedSettingsCard.LayoutOrder = 2
+Instance.new("UICorner", AdvancedSettingsCard).CornerRadius = UDim.new(0, 5)
+local AdvStroke = Instance.new("UIStroke", AdvancedSettingsCard)
+AdvStroke.Color = Color3.fromRGB(33, 40, 52)
+
+local DropdownToggle = Instance.new("TextButton", AdvancedSettingsCard)
+DropdownToggle.Size = UDim2.new(1, -24, 0, 32)
+DropdownToggle.Position = UDim2.new(0, 12, 0, 0)
+DropdownToggle.BackgroundTransparency = 1
+DropdownToggle.Text = "▼ Advanced Settings"
+DropdownToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+DropdownToggle.Font = Enum.Font.GothamBold
+DropdownToggle.TextSize = 13
+DropdownToggle.TextXAlignment = Enum.TextXAlignment.Left
+DropdownToggle.ZIndex = 7
+
+local KeybindBtn = Instance.new("TextButton", AdvancedSettingsCard)
+KeybindBtn.Size = UDim2.new(1, -24, 0, 34)
+KeybindBtn.Position = UDim2.new(0, 12, 0, 38)
+KeybindBtn.BackgroundColor3 = Color3.fromRGB(17, 21, 28)
+KeybindBtn.Text = "Minimize UI Keybind: [ Minus ]"
+KeybindBtn.TextColor3 = Color3.fromRGB(200, 205, 215)
 KeybindBtn.Font = Enum.Font.GothamSemibold
-KeybindBtn.TextSize = 11
-Instance.new("UICorner", KeybindBtn).CornerRadius = UDim.new(0, 6)
+KeybindBtn.TextSize = 12
+KeybindBtn.ZIndex = 7
+Instance.new("UICorner", KeybindBtn).CornerRadius = UDim.new(0, 5)
+local KeyStroke = Instance.new("UIStroke", KeybindBtn)
+KeyStroke.Color = Color3.fromRGB(33, 40, 52)
 
-local InfoLabel = Instance.new("TextLabel", MainTabFrame)
-InfoLabel.Size = UDim2.new(1, -30, 0, 30)
-InfoLabel.Position = UDim2.new(0, 15, 0, 210)
+local InfoLabel = Instance.new("TextLabel", AdvancedSettingsCard)
+InfoLabel.Size = UDim2.new(1, -24, 0, 24)
+InfoLabel.Position = UDim2.new(0, 12, 0, 76)
 InfoLabel.BackgroundTransparency = 1
-InfoLabel.Text = "Use your assigned minimalize keybind anytime to clean your viewport screens safely."
-InfoLabel.TextColor3 = Color3.fromRGB(115, 115, 120)
+InfoLabel.Text = "Use your assigned minimize hotkey anytime to clean your viewport screens safely."
+InfoLabel.TextColor3 = Color3.fromRGB(100, 110, 130)
 InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.TextSize = 9
+InfoLabel.TextSize = 10
 InfoLabel.TextWrapped = true
+InfoLabel.ZIndex = 7
 
-local ConfigsHeader = Instance.new("TextLabel", ConfigTabFrame)
-ConfigsHeader.Size = UDim2.new(1, -30, 0, 20)
-ConfigsHeader.Position = UDim2.new(0, 15, 0, 10)
+local ConfigsHeader = Instance.new("TextLabel", ConfigsPage)
+ConfigsHeader.Size = UDim2.new(1, -30, 0, 24)
 ConfigsHeader.BackgroundTransparency = 1
-ConfigsHeader.Text = "PROFILE MANAGER"
-ConfigsHeader.TextColor3 = Color3.fromRGB(0, 125, 255)
+ConfigsHeader.Text = "CONFIG LIST"
+ConfigsHeader.TextColor3 = Color3.fromRGB(59, 130, 246)
 ConfigsHeader.Font = Enum.Font.GothamBold
-ConfigsHeader.TextSize = 11
+ConfigsHeader.TextSize = 13
 ConfigsHeader.TextXAlignment = Enum.TextXAlignment.Left
+ConfigsHeader.ZIndex = 6
+ConfigsHeader.LayoutOrder = 1
 
-local ConfigInput = Instance.new("TextBox", ConfigTabFrame)
-ConfigInput.Size = UDim2.new(1, -30, 0, 28)
-ConfigInput.Position = UDim2.new(0, 15, 0, 32)
-ConfigInput.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+local ConfigInput = Instance.new("TextBox", ConfigsPage)
+ConfigInput.Size = UDim2.new(1, 0, 0, 32)
+ConfigInput.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
 ConfigInput.PlaceholderText = "Enter configuration file name..."
 ConfigInput.Text = ""
 ConfigInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-ConfigInput.PlaceholderColor3 = Color3.fromRGB(110, 110, 115)
+ConfigInput.PlaceholderColor3 = Color3.fromRGB(100, 110, 130)
 ConfigInput.Font = Enum.Font.Gotham
-ConfigInput.TextSize = 11
+ConfigInput.TextSize = 12
+ConfigInput.ZIndex = 6
+ConfigInput.LayoutOrder = 2
 Instance.new("UICorner", ConfigInput).CornerRadius = UDim.new(0, 5)
+local InputStroke = Instance.new("UIStroke", ConfigInput)
+InputStroke.Color = Color3.fromRGB(33, 40, 52)
 
-local SaveBtn = Instance.new("TextButton", ConfigTabFrame)
-SaveBtn.Size = UDim2.new(0.5, -20, 0, 26)
-SaveBtn.Position = UDim2.new(0, 15, 0, 68)
-SaveBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 80)
-SaveBtn.Text = "Save Config"
-SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SaveBtn.Font = Enum.Font.GothamBold
-SaveBtn.TextSize = 10
-Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 5)
+local ButtonsGrid = Instance.new("Frame", ConfigsPage)
+ButtonsGrid.Size = UDim2.new(1, 0, 0, 74)
+ButtonsGrid.BackgroundTransparency = 1
+ButtonsGrid.ZIndex = 6
+ButtonsGrid.LayoutOrder = 3
+local GridUILayout = Instance.new("UIGridLayout", ButtonsGrid)
+GridUILayout.CellSize = UDim2.new(0.5, -6, 0, 32)
+GridUILayout.CellPadding = UDim2.new(0, 12, 0, 10)
 
-local LoadBtn = Instance.new("TextButton", ConfigTabFrame)
-LoadBtn.Size = UDim2.new(0.5, -20, 0, 26)
-LoadBtn.Position = UDim2.new(0.5, 5, 0, 68)
-LoadBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 80)
-LoadBtn.Text = "Load Config"
-LoadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-LoadBtn.Font = Enum.Font.GothamBold
-LoadBtn.TextSize = 10
-Instance.new("UICorner", LoadBtn).CornerRadius = UDim.new(0, 5)
+local function ConfigBtnFactory(text)
+    local Btn = Instance.new("TextButton", ButtonsGrid)
+    Btn.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 12
+    Btn.ZIndex = 7
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
+    local BStroke = Instance.new("UIStroke", Btn)
+    BStroke.Color = Color3.fromRGB(33, 40, 52)
+    return Btn
+end
 
-local OverwriteBtn = Instance.new("TextButton", ConfigTabFrame)
-OverwriteBtn.Size = UDim2.new(0.5, -20, 0, 26)
-OverwriteBtn.Position = UDim2.new(0, 15, 0, 100)
-OverwriteBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 80)
-OverwriteBtn.Text = "Overwrite"
-OverwriteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OverwriteBtn.Font = Enum.Font.GothamBold
-OverwriteBtn.TextSize = 10
-Instance.new("UICorner", OverwriteBtn).CornerRadius = UDim.new(0, 5)
+local SaveBtn = ConfigBtnFactory("Save Config")
+local LoadBtn = ConfigBtnFactory("Load Config")
+local OverwriteBtn = ConfigBtnFactory("Overwrite")
+local DeleteBtn = ConfigBtnFactory("Delete Config")
 
-local DeleteBtn = Instance.new("TextButton", ConfigTabFrame)
-DeleteBtn.Size = UDim2.new(0.5, -20, 0, 26)
-DeleteBtn.Position = UDim2.new(0.5, 5, 0, 100)
-DeleteBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 80)
-DeleteBtn.Text = "Delete Config"
-DeleteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DeleteBtn.Font = Enum.Font.GothamBold
-DeleteBtn.TextSize = 10
-Instance.new("UICorner", DeleteBtn).CornerRadius = UDim.new(0, 5)
-
-local ScrollingFrame = Instance.new("ScrollingFrame", ConfigTabFrame)
-ScrollingFrame.Size = UDim2.new(1, -30, 0, 110)
-ScrollingFrame.Position = UDim2.new(0, 15, 0, 140)
-ScrollingFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+local ScrollingFrame = Instance.new("ScrollingFrame", ConfigsPage)
+ScrollingFrame.Size = UDim2.new(1, 0, 0, 120)
+ScrollingFrame.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.ScrollBarThickness = 3
+ScrollingFrame.ScrollBarThickness = 2
 ScrollingFrame.AutomaticSize = Enum.AutomaticSize.Y
+ScrollingFrame.ZIndex = 6
+ScrollingFrame.LayoutOrder = 4
 Instance.new("UICorner", ScrollingFrame).CornerRadius = UDim.new(0, 5)
+local ScrollStroke = Instance.new("UIStroke", ScrollingFrame)
+ScrollStroke.Color = Color3.fromRGB(33, 40, 52)
 
 local UIListLayout = Instance.new("UIListLayout", ScrollingFrame)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 4)
 
-UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    pcall(function()
-        if ScrollingFrame.AutomaticSize == Enum.AutomaticSize.None then
-            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
-        end
-    end)
-end)
+local function BuildComingSoonPlaceholder(parentFrame)
+    local CSLabel = Instance.new("TextLabel", parentFrame)
+    CSLabel.Size = UDim2.new(1, 0, 0, 100)
+    CSLabel.BackgroundTransparency = 1
+    CSLabel.Text = "COMING SOON"
+    CSLabel.TextColor3 = Color3.fromRGB(75, 85, 105)
+    CSLabel.Font = Enum.Font.GothamBold
+    CSLabel.TextSize = 20
+    CSLabel.ZIndex = 6
+end
+BuildComingSoonPlaceholder(AimbotEspPage)
+
+local UnsupportedTextLabel = Instance.new("TextLabel", UnsupportedGamesPage)
+UnsupportedTextLabel.Size = UDim2.new(1, 0, 0, 32)
+UnsupportedTextLabel.BackgroundTransparency = 1
+UnsupportedTextLabel.Text = "prisonlife"
+UnsupportedTextLabel.TextColor3 = Color3.fromRGB(200, 205, 215)
+UnsupportedTextLabel.Font = Enum.Font.GothamSemibold
+UnsupportedTextLabel.TextSize = 14
+UnsupportedTextLabel.TextXAlignment = Enum.TextXAlignment.Left
+UnsupportedTextLabel.ZIndex = 6
 
 local function saveConfigsToStorageFile()
     if typeof(writefile) == "function" then
@@ -343,6 +433,48 @@ local function saveConfigsToStorageFile()
         if success and typeof(jsonString) == "string" then
             pcall(writefile, "hitbox_profiles.json", jsonString)
         end
+    end
+end
+
+local function updateTrackbarLayout(targetValue)
+    local percentage = math.clamp((targetValue - 5) / 95, 0, 1)
+    SLabel.Text = tostring(targetValue)
+    SHandle.Position = UDim2.new(percentage, -5, 0.5, -5)
+    SFill.Size = UDim2.new(percentage, 0, 1, 0)
+end
+
+local function updateOpacityLayout(targetValue)
+    local percentage = math.clamp(targetValue, 0, 1)
+    OLabel.Text = string.format("%.1f", targetValue)
+    OHandle.Position = UDim2.new(percentage, -5, 0.5, -5)
+    OFill.Size = UDim2.new(percentage, 0, 1, 0)
+end
+
+local function refreshVisualConfigList()
+    for _, child in ipairs(ScrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    for name, data in pairs(savedConfigs) do
+        local targetSize = (typeof(data) == "table" and data.Size) or data
+        local itemBtn = Instance.new("TextButton", ScrollingFrame)
+        itemBtn.Size = UDim2.new(1, -6, 0, 24)
+        itemBtn.BackgroundTransparency = 1
+        itemBtn.Text = "  • " .. tostring(name) .. "  (Size: " .. tostring(targetSize) .. ")"
+        itemBtn.TextColor3 = Color3.fromRGB(195, 195, 200)
+        itemBtn.Font = Enum.Font.Gotham
+        itemBtn.TextSize = 11
+        itemBtn.TextXAlignment = Enum.TextXAlignment.Left
+        itemBtn.ZIndex = 8
+        
+        itemBtn.MouseButton1Click:Connect(function()
+            ConfigInput.Text = tostring(name)
+            ConfigInput:ReleaseFocus()
+            ConfigsHeader.Text = "SELECTED: '" .. string.upper(tostring(name)) .. "'"
+            task.spawn(function()
+                task.wait(1.0)
+                ConfigsHeader.Text = "CONFIG LIST"
+            end)
+        end)
     end
 end
 
@@ -361,177 +493,137 @@ local function loadConfigsFromStorageFile()
     end
 end
 
-local function refreshVisualConfigList()
-    local currentItems = ScrollingFrame:GetChildren()
-    for i = 1, #currentItems do
-        local child = currentItems[i]
-        if child:IsA("TextButton") then
-            child:Destroy()
+UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    pcall(function()
+        if ScrollingFrame.AutomaticSize == Enum.AutomaticSize.None then
+            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
         end
-    end
-    for name, data in pairs(savedConfigs) do
-        local targetSize = (typeof(data) == "table" and data.Size) or data
-        local itemBtn = Instance.new("TextButton")
-        itemBtn.Size = UDim2.new(1, -6, 0, 22)
-        itemBtn.BackgroundTransparency = 1
-        itemBtn.Text = "  • " .. tostring(name) .. "  (Size: " .. tostring(targetSize) .. ")"
-        itemBtn.TextColor3 = Color3.fromRGB(195, 195, 200)
-        itemBtn.Font = Enum.Font.Gotham
-        itemBtn.TextSize = 11
-        itemBtn.TextXAlignment = Enum.TextXAlignment.Left
-        itemBtn.MouseButton1Click:Connect(function()
-            ConfigInput.Text = tostring(name)
-            ConfigInput:ReleaseFocus()
-            ConfigsHeader.Text = "SELECTED: '" .. string.upper(tostring(name)) .. "'"
-            task.wait(1.0)
-            ConfigsHeader.Text = "PROFILE MANAGER"
-        end)
-        itemBtn.Parent = ScrollingFrame
-    end
-end
-
-loadConfigsFromStorageFile()
-refreshVisualConfigList()
-
-Tab1Btn.MouseButton1Click:Connect(function()
-    Tab1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    Tab1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Tab2Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab2Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    Tab3Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab3Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    ConfigTabFrame.Visible = false
-    AimbotTabFrame.Visible = false
-    MainTabFrame.Visible = true
+    end)
 end)
-
-Tab2Btn.MouseButton1Click:Connect(function()
-    Tab2Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    Tab2Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Tab1Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab1Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    Tab3Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab3Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    MainTabFrame.Visible = false
-    AimbotTabFrame.Visible = false
-    ConfigTabFrame.Visible = true
-end)
-
-Tab3Btn.MouseButton1Click:Connect(function()
-    Tab3Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    Tab3Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Tab1Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab1Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    Tab2Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    Tab2Btn.TextColor3 = Color3.fromRGB(160, 160, 165)
-    MainTabFrame.Visible = false
-    ConfigTabFrame.Visible = false
-    AimbotTabFrame.Visible = true
-end)
-
-local function updateTrackbarLayout(targetValue)
-    local percentage = math.clamp((targetValue - 5) / 95, 0, 1)
-    SliderLabel.Text = "Target Size Multiplier: " .. tostring(targetValue)
-    SliderHandle.Position = UDim2.new(percentage, -5, 0.5, -5)
-    SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-end
-
-local function updateOpacityLayout(targetValue)
-    local percentage = math.clamp(targetValue, 0, 1)
-    OpacityLabel.Text = "Hitbox Opacity: " .. string.format("%.2f", targetValue)
-    OpacityHandle.Position = UDim2.new(percentage, -5, 0.5, -5)
-    OpacityFill.Size = UDim2.new(percentage, 0, 1, 0)
-end
 
 SaveBtn.MouseButton1Click:Connect(function()
-    local profileName = ConfigInput.Text
+    local profileName = ConfigInput.Text:gsub("%s+", "")
     if profileName == "" then return end
-    savedConfigs[profileName] = {
-        Size = _G.MarkerSize,
-        Opacity = _G.HitboxOpacity or 0.7
-    }
+    savedConfigs[profileName] = { Size = _G.MarkerSize, Opacity = _G.HitboxOpacity }
     ConfigInput.Text = ""
     ConfigInput:ReleaseFocus()
     saveConfigsToStorageFile()
     refreshVisualConfigList()
     ConfigsHeader.Text = "SAVED '" .. string.upper(tostring(profileName)) .. "'"
-    task.spawn(function()
-        task.wait(1.5)
-        ConfigsHeader.Text = "PROFILE MANAGER"
-    end)
+    task.spawn(function() task.wait(1.5) ConfigsHeader.Text = "CONFIG LIST" end)
 end)
 
-local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
-local trackingMouseActive = false
-local trackingOpacityActive = false
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        local connection
-        connection = input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-                connection:Disconnect()
-            end
-        end)
+LoadBtn.MouseButton1Click:Connect(function()
+    local profileName = ConfigInput.Text:gsub("%s+", "")
+    if profileName == "" or not savedConfigs[profileName] then return end
+    ConfigInput:ReleaseFocus()
+    local data = savedConfigs[profileName]
+    if typeof(data) == "table" then
+        _G.MarkerSize = data.Size or _G.MarkerSize
+        _G.HitboxOpacity = data.Opacity or _G.HitboxOpacity
+    else
+        _G.MarkerSize = tonumber(data) or _G.MarkerSize
     end
+    updateTrackbarLayout(_G.MarkerSize)
+    updateOpacityLayout(_G.HitboxOpacity)
+    ConfigsHeader.Text = "LOADED '" .. string.upper(tostring(profileName)) .. "'"
+    task.spawn(function() task.wait(1.5) ConfigsHeader.Text = "CONFIG LIST" end)
 end)
 
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
+OverwriteBtn.MouseButton1Click:Connect(function()
+    local profileName = ConfigInput.Text:gsub("%s+", "")
+    if profileName == "" or not savedConfigs[profileName] then return end
+    ConfigInput:ReleaseFocus()
+    savedConfigs[profileName] = { Size = _G.MarkerSize, Opacity = _G.HitboxOpacity }
+    saveConfigsToStorageFile()
+    refreshVisualConfigList()
+    ConfigsHeader.Text = "OVERWROTE '" .. string.upper(tostring(profileName)) .. "'"
+    task.spawn(function() task.wait(1.5) ConfigsHeader.Text = "CONFIG LIST" end)
+end)
+
+DeleteBtn.MouseButton1Click:Connect(function()
+    local profileName = ConfigInput.Text:gsub("%s+", "")
+    if profileName == "" or not savedConfigs[profileName] then return end
+    ConfigInput:ReleaseFocus()
+    savedConfigs[profileName] = nil
+    ConfigInput.Text = ""
+    saveConfigsToStorageFile()
+    refreshVisualConfigList()
+    ConfigsHeader.Text = "DELETED '" .. string.upper(tostring(profileName)) .. "'"
+    task.spawn(function() task.wait(1.5) ConfigsHeader.Text = "CONFIG LIST" end)
+end)
+
+local dropdownExpanded = true
+DropdownToggle.MouseButton1Click:Connect(function()
+    dropdownExpanded = not dropdownExpanded
+    DropdownToggle.Text = dropdownExpanded and "▼ Advanced Settings" or "▶ Advanced Settings"
+    KeybindBtn.Visible = dropdownExpanded
+    InfoLabel.Visible = dropdownExpanded
+    AdvancedSettingsCard.Size = dropdownExpanded and UDim2.new(1, 0, 0, 105) or UDim2.new(1, 0, 0, 32)
+end)
+
+TogglePill.MouseButton1Click:Connect(function()
+    _G.VisualizerEnabled = not _G.VisualizerEnabled
+    local targetColor = _G.VisualizerEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(60, 60, 65)
+    local targetPos = _G.VisualizerEnabled and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
+    TweenService:Create(TogglePill, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(ToggleBall, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {Position = targetPos}):Play()
+end)
+
+local function ConfigurationSliderTracker(input, track, min, max, isOp, fill, handle, label, globalName)
+    local tw = track.AbsoluteSize.X
+    if tw <= 0 then return end
+    local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / tw, 0, 1)
+    if isOp then
+        _G[globalName] = math.floor(pct * 100) / 100
+        label.Text = string.format("%.1f", _G[globalName])
+    else
+        _G[globalName] = math.floor(min + (pct * (max - min)))
+        label.Text = tostring(_G[globalName])
     end
-end)
-
-local function handleSliderMultiplier(input)
-    local trackWidth = SliderTrack.AbsoluteSize.X
-    if trackWidth <= 0 then return end
-    local pct = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / trackWidth, 0, 1)
-    _G.MarkerSize = math.floor(5 + (pct * 95))
-    SliderLabel.Text = "Target Size Multiplier: " .. tostring(_G.MarkerSize)
-    SliderHandle.Position = UDim2.new(pct, -5, 0.5, -5)
-    SliderFill.Size = UDim2.new(pct, 0, 1, 0)
+    handle.Position = UDim2.new(pct, -5, 0.5, -5)
+    fill.Size = UDim2.new(pct, 0, 1, 0)
 end
 
-local function handleOpacityMultiplier(input)
-    local trackWidth = OpacityTrack.AbsoluteSize.X
-    if trackWidth <= 0 then return end
-    local pct = math.clamp((input.Position.X - OpacityTrack.AbsolutePosition.X) / trackWidth, 0, 1)
-    _G.HitboxOpacity = math.floor(pct * 100) / 100
-    OpacityLabel.Text = "Hitbox Opacity: " .. string.format("%.2f", _G.HitboxOpacity)
-    OpacityHandle.Position = UDim2.new(pct, -5, 0.5, -5)
-    OpacityFill.Size = UDim2.new(pct, 0, 1, 0)
-end
+SHandle.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then trackingMouseActive = true end end)
+OHandle.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then trackingOpacityActive = true end end)
 
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement then
-        if dragging and dragInput then
-            local delta = input.Position - dragStart
-            local targetPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            TweenService:Create(MainFrame, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = targetPos}):Play()
-        end
-        if trackingMouseActive then
-            handleSliderMultiplier(input)
-        end
-        if trackingOpacityActive then
-            handleOpacityMultiplier(input)
-        end
+        if trackingMouseActive then ConfigurationSliderTracker(input, STrack, SMin, SMax, SIsOp, SFill, SHandle, SLabel, SVar) end
+        if trackingOpacityActive then ConfigurationSliderTracker(input, OTrack, OMin, OMax, OIsOp, OFill, OHandle, OLabel, OVar) end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
         trackingMouseActive = false
         trackingOpacityActive = false
     end
 end)
 
-local bindingKeyActive = false
+local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+DragHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainWindow.Position
+        local conn
+        conn = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false conn:Disconnect() end
+        end)
+    end
+end)
+DragHandle.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        TweenService:Create(MainWindow, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        }):Play()
+    end
+end)
+
 KeybindBtn.MouseButton1Click:Connect(function()
     if bindingKeyActive then return end
     bindingKeyActive = true
@@ -540,7 +632,7 @@ KeybindBtn.MouseButton1Click:Connect(function()
     captureConnection = UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.Backspace then
-            KeybindBtn.Text = "Minimalize GUI: [ " .. _G.CloseKeybind.Name .. " ]"
+            KeybindBtn.Text = "Minimize UI Keybind: [ " .. _G.CloseKeybind.Name .. " ]"
             captureConnection:Disconnect()
             task.wait()
             bindingKeyActive = false
@@ -548,7 +640,7 @@ KeybindBtn.MouseButton1Click:Connect(function()
         end
         if input.UserInputType == Enum.UserInputType.Keyboard then
             _G.CloseKeybind = input.KeyCode
-            KeybindBtn.Text = "Minimalize GUI: [ " .. input.KeyCode.Name .. " ]"
+            KeybindBtn.Text = "Minimize UI Keybind: [ " .. input.KeyCode.Name .. " ]"
             captureConnection:Disconnect()
             task.wait()
             bindingKeyActive = false
@@ -556,135 +648,38 @@ KeybindBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
-LoadBtn.MouseButton1Click:Connect(function()
-    local profileName = ConfigInput.Text
-    if profileName == "" then return end
-    ConfigInput:ReleaseFocus()
-    local data = savedConfigs[profileName]
-    if data then
-        if typeof(data) == "table" then
-            _G.MarkerSize = data.Size or _G.MarkerSize
-            _G.HitboxOpacity = data.Opacity or 0.7
-            updateTrackbarLayout(_G.MarkerSize)
-            updateOpacityLayout(_G.HitboxOpacity)
-        else
-            _G.MarkerSize = data
-            updateTrackbarLayout(_G.MarkerSize)
-        end
-        ConfigsHeader.Text = "LOADED '" .. string.upper(tostring(profileName)) .. "'"
-    else
-        ConfigsHeader.Text = "NOT FOUND"
-    end
-    task.spawn(function()
-        task.wait(1.5)
-        ConfigsHeader.Text = "PROFILE MANAGER"
-    end)
-end)
-
-OverwriteBtn.MouseButton1Click:Connect(function()
-    local profileName = ConfigInput.Text
-    if profileName == "" then return end
-    ConfigInput:ReleaseFocus()
-    if savedConfigs[profileName] then
-        savedConfigs[profileName] = {
-            Size = _G.MarkerSize,
-            Opacity = _G.HitboxOpacity or 0.7
-        }
-        saveConfigsToStorageFile()
-        refreshVisualConfigList()
-        ConfigsHeader.Text = "OVERWROTE '" .. string.upper(tostring(profileName)) .. "'"
-    else
-        ConfigsHeader.Text = "ERROR: NOT FOUND"
-    end
-    task.spawn(function()
-        task.wait(1.5)
-        ConfigsHeader.Text = "PROFILE MANAGER"
-    end)
-end)
-
-DeleteBtn.MouseButton1Click:Connect(function()
-    local profileName = ConfigInput.Text
-    if profileName == "" then return end
-    ConfigInput:ReleaseFocus()
-    if savedConfigs[profileName] then
-        savedConfigs[profileName] = nil
-        ConfigInput.Text = ""
-        saveConfigsToStorageFile()
-        refreshVisualConfigList()
-        ConfigsHeader.Text = "DELETED '" .. string.upper(tostring(profileName)) .. "'"
-    else
-        ConfigsHeader.Text = "ERROR: NOT FOUND"
-    end
-    task.spawn(function()
-        task.wait(1.5)
-        ConfigsHeader.Text = "PROFILE MANAGER"
-    end)
-end)
-
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or UserInputService:GetFocusedTextBox() then return end
     local targetBind = _G.CloseKeybind
     local isMinusKey = (input.KeyCode == targetBind) or (input.KeyCode == Enum.KeyCode.KeypadMinus and targetBind == Enum.KeyCode.Minus) or (input.KeyCode == Enum.KeyCode.Minus and targetBind == Enum.KeyCode.KeypadMinus)
-    if isMinusKey then
-        ScreenGui.Enabled = not ScreenGui.Enabled
-    end
-end)
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    _G.VisualizerEnabled = not _G.VisualizerEnabled
-    ToggleBtn.BackgroundColor3 = _G.VisualizerEnabled and Color3.fromRGB(0, 125, 255) or Color3.fromRGB(150, 35, 35)
-    ToggleBtn.Text = _G.VisualizerEnabled and "Status: Enabled" or "Status: Disabled"
-end)
-
-SliderHandle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        trackingMouseActive = true
-    end
-end)
-
-FolddownToggle.MouseButton1Click:Connect(function()
-    local isVisible = not FolddownContent.Visible
-    FolddownContent.Visible = isVisible
-    FolddownToggle.Text = isVisible and "  ▼  Hitbox Extender Settings" or "  ▶  Hitbox Extender Settings"
-    KeybindBtn.Position = isVisible and UDim2.new(0, 15, 0, 210) or UDim2.new(0, 15, 0, 160)
-    InfoLabel.Position = isVisible and UDim2.new(0, 15, 0, 255) or UDim2.new(0, 15, 0, 210)
-end)
-
-OpacityHandle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        trackingOpacityActive = true
-    end
+    if isMinusKey then ScreenGui.Enabled = not ScreenGui.Enabled end
 end)
 
 local WESTBOUND_PLACE_ID = 2474168535
 local WESTBOUND_GAME_ID = 873703865
-local currentPlaceId = game.PlaceId
-local currentGameId = game.GameId
-local isWestbound = (currentPlaceId == WESTBOUND_PLACE_ID) or (currentGameId == WESTBOUND_GAME_ID)
+local isWestbound = (game.PlaceId == WESTBOUND_PLACE_ID) or (game.GameId == WESTBOUND_GAME_ID)
 
 local function getUniversalTargetPart(character)
-    if isWestbound then
-        return character:FindFirstChild("Head")
-    else
-        return character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
-    end
+    if isWestbound then return character:FindFirstChild("Head") end
+    return character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
 end
 
 local customPhysics = PhysicalProperties.new(0.0001, 0.3, 0.5, 1, 1)
 local blueColor = BrickColor.new("Really blue")
-local defaultSize = Vector3.new(2, 1, 1)
-local tSize = Vector3.new(_G.MarkerSize, _G.MarkerSize, _G.MarkerSize)
+local defaultSize = isWestbound and Vector3.new(2, 1, 1) or Vector3.new(2, 2, 1)
 
 RunService.Heartbeat:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local playerList = Players:GetPlayers()
-    tSize = Vector3.new(_G.MarkerSize, _G.MarkerSize, _G.MarkerSize)
+    local tSize = Vector3.new(_G.MarkerSize, _G.MarkerSize, _G.MarkerSize)
+    
     for i = 1, #playerList do
         local player = playerList[i]
         if player ~= LocalPlayer then
             local char = player.Character
             local constraintName = "NoCollide" .. player.Name
+            
             if _G.VisualizerEnabled and char then
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum and hum.Health > 0 then
@@ -692,7 +687,7 @@ RunService.Heartbeat:Connect(function()
                     if targetPart then
                         local enemyRoot = char:FindFirstChild("HumanoidRootPart")
                         targetPart.Size = tSize
-                        targetPart.Transparency = _G.HitboxOpacity or 0.7
+                        targetPart.Transparency = _G.HitboxOpacity
                         targetPart.CanCollide = false
                         targetPart.Massless = true
                         targetPart.CanTouch = true
@@ -700,6 +695,7 @@ RunService.Heartbeat:Connect(function()
                         targetPart.BrickColor = blueColor
                         targetPart.Material = Enum.Material.SmoothPlastic
                         targetPart.CustomPhysicalProperties = customPhysics
+                        
                         if myRoot and enemyRoot then
                             if not myRoot:FindFirstChild(constraintName) then
                                 local noCollide = Instance.new("NoCollisionConstraint")
@@ -712,26 +708,44 @@ RunService.Heartbeat:Connect(function()
                     end
                 elseif myRoot then
                     local staleConstraint = myRoot:FindFirstChild(constraintName)
-                    if staleConstraint then
-                        staleConstraint:Destroy()
-                    end
+                    if staleConstraint then staleConstraint:Destroy() end
                 end
             elseif char then
                 local targetPart = getUniversalTargetPart(char)
-                if targetPart and targetPart.Size ~= defaultSize and targetPart.Size == tSize then
+                if targetPart and targetPart.Size ~= defaultSize then
                     targetPart.Size = defaultSize
                     targetPart.Transparency = 0
                     targetPart.CanCollide = true
                 end
             end
+            
             if not _G.VisualizerEnabled or not char or not char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("Humanoid").Health <= 0 then
                 if myRoot then
                     local staleConstraint = myRoot:FindFirstChild(constraintName)
-                    if staleConstraint then
-                        staleConstraint:Destroy()
-                    end
+                    if staleConstraint then staleConstraint:Destroy() end
                 end
             end
+            
         end
     end
 end)
+
+Players.PlayerRemoving:Connect(function(player)
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if myRoot then
+        local constraintName = "NoCollide" .. player.Name
+        local staleConstraint = myRoot:FindFirstChild(constraintName)
+        if staleConstraint then staleConstraint:Destroy() end
+    end
+end)
+
+loadConfigsFromStorageFile()
+refreshVisualConfigList()
+
+currentTabFrame = {Button = MainControlsBtn, Frame = MainControlsPage}
+MainControlsBtn.BackgroundTransparency = 0
+MainControlsBtn.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+MainControlsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", MainControlsBtn).CornerRadius = UDim.new(0, 4)
+MainControlsPage.Visible = true
