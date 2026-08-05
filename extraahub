@@ -8,7 +8,8 @@ local Camera = workspace.CurrentCamera
 
 _G.VisualizerEnabled = false
 _G.MarkerSize = 11
-_G.HitboxOpacity = 0.7
+_G.HitboxOpacity = 0.17
+_G.HitboxTeamCheck = false
 _G.CloseKeybind = Enum.KeyCode.Minus
 _G.ESPEnabled = false
 _G.AimbotEnabled = false
@@ -34,6 +35,48 @@ local espBoxes = {}
 local fovCircle = nil
 local aimbotConnection = nil
 
+local function getPlayerTeam(player)
+    if player:FindFirstChild("Team") then
+        local teamValue = player.Team
+        if typeof(teamValue) == "Instance" and teamValue:IsA("Team") then
+            return teamValue
+        elseif typeof(teamValue) == "string" or typeof(teamValue) == "number" then
+            return tostring(teamValue)
+        end
+    end
+    
+    if player.Character then
+        local char = player.Character
+        if char:FindFirstChild("TeamColor") then
+            return char.TeamColor.Value
+        end
+        if char:FindFirstChild("Team") then
+            return char.Team.Value
+        end
+        if char:FindFirstChild("Outlaws") then return "Outlaws" end
+        if char:FindFirstChild("Lawmen") then return "Lawmen" end
+        if char:FindFirstChild("Bandits") then return "Bandits" end
+        if char:FindFirstChild("Sheriff") then return "Sheriff" end
+    end
+    
+    return player.Team
+end
+
+local function isOnSameTeam(player1, player2)
+    local team1 = getPlayerTeam(player1)
+    local team2 = getPlayerTeam(player2)
+    
+    if not team1 or not team2 then
+        return false
+    end
+    
+    if typeof(team1) == "Instance" and typeof(team2) == "Instance" then
+        return team1 == team2
+    end
+    
+    return tostring(team1) == tostring(team2)
+end
+
 local secureGuiSuccess, secureGuiTarget = pcall(function()
     return get_hidden_gui or gethui or game:GetService("CoreGui")
 end)
@@ -51,8 +94,8 @@ ScreenGui.IgnoreGuiInset = true
 if typeof(setcloneref) == "function" then setcloneref(ScreenGui) end
 
 local MainWindow = Instance.new("Frame", ScreenGui)
-MainWindow.Size = UDim2.new(0, 520, 0, 365)
-MainWindow.Position = UDim2.new(0.5, -260, 0.5, -182)
+MainWindow.Size = UDim2.new(0, 520, 0, 395)
+MainWindow.Position = UDim2.new(0.5, -260, 0.5, -197)
 MainWindow.BackgroundColor3 = Color3.fromRGB(17, 21, 28)
 MainWindow.Active = false
 MainWindow.ClipsDescendants = true
@@ -175,15 +218,16 @@ CreateCategoryHeader("MAIN", 1)
 local MainControlsPage, MainControlsBtn = CreateTab("Main Controls", 2)
 CreateHorizontalSectionDivider(3)
 CreateCategoryHeader("COMMON", 4)
-local AimbotEspPage, AimbotEspBtn = CreateTab("Aimbot & ESP", 5)
-local UnsupportedGamesPage, UnsupportedGamesBtn = CreateTab("Unsupported Games", 6)
-CreateHorizontalSectionDivider(7)
-CreateCategoryHeader("SETTINGS", 8)
-local ConfigsPage, ConfigsTabBtn = CreateTab("⚙️ Configs", 9)
+local AimbotPage, AimbotBtn = CreateTab("Aimbot", 5)
+local ESPPage, ESPBtn = CreateTab("ESP", 6)
+local UnsupportedGamesPage, UnsupportedGamesBtn = CreateTab("Unsupported Games", 7)
+CreateHorizontalSectionDivider(8)
+CreateCategoryHeader("SETTINGS", 9)
+local ConfigsPage, ConfigsTabBtn = CreateTab("⚙️ Configs", 10)
 ConfigsTabBtn.LayoutOrder = 99
 
 local UsefulControlsCard = Instance.new("Frame", MainControlsPage)
-UsefulControlsCard.Size = UDim2.new(1, 0, 0, 155)
+UsefulControlsCard.Size = UDim2.new(1, 0, 0, 195)
 UsefulControlsCard.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
 UsefulControlsCard.BorderSizePixel = 0
 UsefulControlsCard.ZIndex = 6
@@ -234,6 +278,38 @@ ToggleBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBall.BorderSizePixel = 0
 ToggleBall.ZIndex = 9
 Instance.new("UICorner", ToggleBall).CornerRadius = UDim.new(1, 0)
+
+local HitboxTeamRow = Instance.new("Frame", UsefulControlsCard)
+HitboxTeamRow.Size = UDim2.new(1, -24, 0, 28)
+HitboxTeamRow.Position = UDim2.new(0, 12, 0, 74)
+HitboxTeamRow.BackgroundTransparency = 1
+HitboxTeamRow.ZIndex = 7
+
+local HitboxTeamLabel = Instance.new("TextLabel", HitboxTeamRow)
+HitboxTeamLabel.Size = UDim2.new(0.7, 0, 1, 0)
+HitboxTeamLabel.BackgroundTransparency = 1
+HitboxTeamLabel.Text = "Hitbox Team Check"
+HitboxTeamLabel.TextColor3 = Color3.fromRGB(200, 205, 215)
+HitboxTeamLabel.Font = Enum.Font.GothamSemibold
+HitboxTeamLabel.TextSize = 12
+HitboxTeamLabel.TextXAlignment = Enum.TextXAlignment.Left
+HitboxTeamLabel.ZIndex = 8
+
+local HitboxTeamPill = Instance.new("TextButton", HitboxTeamRow)
+HitboxTeamPill.Size = UDim2.new(0, 36, 0, 18)
+HitboxTeamPill.Position = UDim2.new(1, -36, 0.5, -9)
+HitboxTeamPill.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+HitboxTeamPill.Text = ""
+HitboxTeamPill.ZIndex = 8
+Instance.new("UICorner", HitboxTeamPill).CornerRadius = UDim.new(1, 0)
+
+local HitboxTeamBall = Instance.new("Frame", HitboxTeamPill)
+HitboxTeamBall.Size = UDim2.new(0, 12, 0, 12)
+HitboxTeamBall.Position = UDim2.new(0, 3, 0.5, -6)
+HitboxTeamBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+HitboxTeamBall.BorderSizePixel = 0
+HitboxTeamBall.ZIndex = 9
+Instance.new("UICorner", HitboxTeamBall).CornerRadius = UDim.new(1, 0)
 
 local function BuildPremiumSlider(parent, labelText, yPos, min, max, default, globalVarName, isOpacity)
     local SliderRow = Instance.new("Frame", parent)
@@ -287,8 +363,8 @@ local function BuildPremiumSlider(parent, labelText, yPos, min, max, default, gl
     return Track, Fill, Handle, ValueLabel, min, max, isOpacity, globalVarName
 end
 
-local STrack, SFill, SHandle, SLabel, SMin, SMax, SIsOp, SVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Size (Studs)", 74, 1, 50, _G.MarkerSize, "MarkerSize", false)
-local OTrack, OFill, OHandle, OLabel, OMin, OMax, OIsOp, OVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Opacity Tracker", 112, 0, 1, _G.HitboxOpacity, "HitboxOpacity", true)
+local STrack, SFill, SHandle, SLabel, SMin, SMax, SIsOp, SVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Size (Studs)", 106, 1, 50, _G.MarkerSize, "MarkerSize", false)
+local OTrack, OFill, OHandle, OLabel, OMin, OMax, OIsOp, OVar = BuildPremiumSlider(UsefulControlsCard, "Hitbox Opacity Tracker", 144, 0, 1, _G.HitboxOpacity, "HitboxOpacity", true)
 
 local AdvancedSettingsCard = Instance.new("Frame", MainControlsPage)
 AdvancedSettingsCard.Size = UDim2.new(1, 0, 0, 105)
@@ -335,8 +411,8 @@ InfoLabel.TextSize = 10
 InfoLabel.TextWrapped = true
 InfoLabel.ZIndex = 7
 
-local AimbotCard = Instance.new("Frame", AimbotEspPage)
-AimbotCard.Size = UDim2.new(1, 0, 0, 300)
+local AimbotCard = Instance.new("Frame", AimbotPage)
+AimbotCard.Size = UDim2.new(1, 0, 0, 260)
 AimbotCard.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
 AimbotCard.BorderSizePixel = 0
 AimbotCard.ZIndex = 6
@@ -348,7 +424,7 @@ local AimbotTitle = Instance.new("TextLabel", AimbotCard)
 AimbotTitle.Size = UDim2.new(1, -24, 0, 28)
 AimbotTitle.Position = UDim2.new(0, 12, 0, 4)
 AimbotTitle.BackgroundTransparency = 1
-AimbotTitle.Text = "Aimbot"
+AimbotTitle.Text = "Aimbot Settings"
 AimbotTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotTitle.Font = Enum.Font.GothamBold
 AimbotTitle.TextSize = 13
@@ -466,12 +542,12 @@ AimbotKeybindBtn.ZIndex = 7
 Instance.new("UICorner", AimbotKeybindBtn).CornerRadius = UDim.new(0, 5)
 Instance.new("UIStroke", AimbotKeybindBtn).Color = Color3.fromRGB(33, 40, 52)
 
-local ESPCard = Instance.new("Frame", AimbotEspPage)
+local ESPCard = Instance.new("Frame", ESPPage)
 ESPCard.Size = UDim2.new(1, 0, 0, 175)
 ESPCard.BackgroundColor3 = Color3.fromRGB(21, 26, 36)
 ESPCard.BorderSizePixel = 0
 ESPCard.ZIndex = 6
-ESPCard.LayoutOrder = 2
+ESPCard.LayoutOrder = 1
 Instance.new("UICorner", ESPCard).CornerRadius = UDim.new(0, 5)
 Instance.new("UIStroke", ESPCard).Color = Color3.fromRGB(33, 40, 52)
 
@@ -695,7 +771,7 @@ end
 
 local function updateOpacityLayout(targetValue)
     local percentage = math.clamp(targetValue, 0, 1)
-    OLabel.Text = string.format("%.1f", targetValue)
+    OLabel.Text = string.format("%.2f", targetValue)
     OHandle.Position = UDim2.new(percentage, -5, 0.5, -5)
     OFill.Size = UDim2.new(percentage, 0, 1, 0)
 end
@@ -819,6 +895,14 @@ TogglePill.MouseButton1Click:Connect(function()
     local targetPos = _G.VisualizerEnabled and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
     TweenService:Create(TogglePill, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {BackgroundColor3 = targetColor}):Play()
     TweenService:Create(ToggleBall, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {Position = targetPos}):Play()
+end)
+
+HitboxTeamPill.MouseButton1Click:Connect(function()
+    _G.HitboxTeamCheck = not _G.HitboxTeamCheck
+    local targetColor = _G.HitboxTeamCheck and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(60, 60, 65)
+    local targetPos = _G.HitboxTeamCheck and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
+    TweenService:Create(HitboxTeamPill, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(HitboxTeamBall, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {Position = targetPos}):Play()
 end)
 
 AimbotPill.MouseButton1Click:Connect(function()
@@ -1003,55 +1087,108 @@ local function updateESP()
     local active = {}
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            if _G.ESPTeamCheck and player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-                continue
-            end
-
-            local root = player.Character.HumanoidRootPart
-            local key = player.UserId
-            active[key] = true
-
-            local boxData = espBoxes[key]
-            if not boxData or not boxData.billboard or not boxData.billboard.Parent then
-                if boxData and boxData.billboard then
-                    pcall(function() boxData.billboard:Destroy() end)
+        if player ~= LocalPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                if _G.ESPTeamCheck and isOnSameTeam(player, LocalPlayer) then
+                    continue
                 end
 
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = "ESPBox_" .. player.Name
-                billboard.Adornee = root
-                billboard.AlwaysOnTop = true
-                billboard.Size = UDim2.new(4, 0, 6, 0)
-                billboard.StudsOffset = Vector3.new(0, 0.5, 0)
-                billboard.MaxDistance = 100000
-                billboard.Parent = ScreenGui
+                local root = character.HumanoidRootPart
+                local key = player.UserId
+                active[key] = true
 
-                local frame = Instance.new("Frame", billboard)
-                frame.Size = UDim2.new(1, 0, 1, 0)
-                frame.BackgroundTransparency = 1
-                frame.BorderSizePixel = 0
+                local boxData = espBoxes[key]
+                if not boxData or not boxData.billboard or not boxData.billboard.Parent then
+                    if boxData and boxData.billboard then
+                        pcall(function() boxData.billboard:Destroy() end)
+                    end
 
-                local stroke = Instance.new("UIStroke", frame)
-                stroke.Color = _G.ESPColor
-                stroke.Thickness = 2
-                stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ESPBox_" .. player.Name
+                    billboard.Adornee = root
+                    billboard.AlwaysOnTop = true
+                    billboard.Size = UDim2.new(4, 0, 6, 0)
+                    billboard.StudsOffset = Vector3.new(0, 0.5, 0)
+                    billboard.MaxDistance = 100000
+                    billboard.Parent = ScreenGui
 
-                espBoxes[key] = { billboard = billboard, stroke = stroke }
-            else
-                boxData.stroke.Color = _G.ESPColor
-                boxData.billboard.Adornee = root
+                    local frame = Instance.new("Frame", billboard)
+                    frame.Size = UDim2.new(1, 0, 1, 0)
+                    frame.BackgroundTransparency = 1
+                    frame.BorderSizePixel = 0
+
+                    local stroke = Instance.new("UIStroke", frame)
+                    stroke.Color = _G.ESPColor
+                    stroke.Thickness = 2
+                    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+                    espBoxes[key] = { billboard = billboard, stroke = stroke }
+                else
+                    boxData.stroke.Color = _G.ESPColor
+                    boxData.billboard.Adornee = root
+                end
             end
         end
     end
 
     for key, boxData in pairs(espBoxes) do
         if not active[key] then
-            if boxData.billboard then
+            if boxData and boxData.billboard then
                 pcall(function() boxData.billboard:Destroy() end)
             end
             espBoxes[key] = nil
         end
+    end
+end
+
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function(character)
+        task.wait(0.1)
+        if _G.ESPEnabled then
+            updateESP()
+        end
+        character.ChildAdded:Connect(function(child)
+            if child.Name == "HumanoidRootPart" and _G.ESPEnabled then
+                task.wait(0.1)
+                updateESP()
+            end
+        end)
+    end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        task.spawn(function()
+            onPlayerAdded(player)
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+local function onPlayerRemoving(player)
+    local key = player.UserId
+    if espBoxes[key] then
+        if espBoxes[key].billboard then
+            pcall(function() espBoxes[key].billboard:Destroy() end)
+        end
+        espBoxes[key] = nil
+    end
+end
+
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer and player.Character then
+        player.Character:GetPropertyChangedSignal("Parent"):Connect(function()
+            if player.Character == nil then
+                task.wait(0.2)
+                if _G.ESPEnabled then
+                    updateESP()
+                end
+            end
+        end)
     end
 end
 
@@ -1077,7 +1214,7 @@ local function isValidTarget(head)
     if not humanoid or humanoid.Health <= 0 then return false end
     local player = Players:GetPlayerFromCharacter(character)
     if not player or player == LocalPlayer then return false end
-    if _G.TeamCheck and player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+    if _G.TeamCheck and isOnSameTeam(player, LocalPlayer) then
         return false
     end
     if _G.WallCheck then
@@ -1097,7 +1234,7 @@ local function findNewTargetInFOV()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            if _G.TeamCheck and player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+            if _G.TeamCheck and isOnSameTeam(player, LocalPlayer) then
                 continue
             end
             local head = player.Character.Head
@@ -1200,6 +1337,20 @@ RunService.RenderStepped:Connect(function()
     if _G.VisualizerEnabled then
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
+                if _G.HitboxTeamCheck and isOnSameTeam(player, LocalPlayer) then
+                    local head = player.Character:FindFirstChild("Head")
+                    if head and originalSizes[head] then
+                        local data = originalSizes[head]
+                        head.Size = data.Size
+                        head.CanCollide = data.CanCollide
+                        head.Massless = data.Massless
+                        head.Transparency = 0
+                        head.Material = Enum.Material.Plastic
+                        originalSizes[head] = nil
+                    end
+                    continue
+                end
+                
                 local head = player.Character:FindFirstChild("Head")
                 if head then
                     if not originalSizes[head] then
@@ -1233,16 +1384,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-end)
-
 loadConfigsFromStorageFile()
 refreshVisualConfigList()
-MainControlsBtn:FindFirstChildOfClass("TextButton") 
-if MainControlsBtn then
-    MainControlsBtn.BackgroundTransparency = 0
-    MainControlsBtn.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
-    MainControlsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-end
+MainControlsBtn.BackgroundTransparency = 0
+MainControlsBtn.BackgroundColor3 = Color3.fromRGB(33, 40, 52)
+MainControlsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MainControlsPage.Visible = true
 currentTabFrame = {Button = MainControlsBtn, Frame = MainControlsPage}
