@@ -391,14 +391,14 @@ local function CreateHorizontalSectionDivider(order)
     LineFrame.Transparency = 0.5
 end
 
-local function CreateTab(name, order, icon)
+local function CreateTab(name, order)
     local TabButton = Instance.new("TextButton", TabContainer)
     TabButton.Size = UDim2.new(1, -12, 0, 32)
     TabButton.BackgroundTransparency = 1
-    TabButton.Text = "  " .. (icon or "") .. " " .. name
+    TabButton.Text = " " .. name
     TabButton.TextColor3 = Color3.fromRGB(140, 150, 170)
-    TabButton.Font = Enum.Font.Gotham
-    TabButton.TextSize = 12
+    TabButton.Font = Enum.Font.GothamSemibold
+    TabButton.TextSize = 13
     TabButton.TextXAlignment = Enum.TextXAlignment.Left
     TabButton.LayoutOrder = order
     TabButton.ZIndex = 6
@@ -444,7 +444,7 @@ end
 
 CreateCategoryHeader("MAIN", 1)
 local MainControlsPage, MainControlsBtn = CreateTab("Main Controls", 2)
-local UpdateLogsPage, UpdateLogsBtn = CreateTab("Update Logs", 3, "📋")
+local UpdateLogsPage, UpdateLogsBtn = CreateTab("Update Logs", 3)
 CreateHorizontalSectionDivider(4)
 CreateCategoryHeader("COMMON", 5)
 local AimbotPage, AimbotBtn = CreateTab("Aimbot", 6)
@@ -453,10 +453,10 @@ local ZoPage, ZoBtn = CreateTab("Zo", 8)
 local UnsupportedGamesPage, UnsupportedGamesBtn = CreateTab("Unsupported", 9)
 CreateHorizontalSectionDivider(10)
 CreateCategoryHeader("SETTINGS", 11)
-local SettingsPage, SettingsBtn = CreateTab("Settings", 12, "⚙")
+local SettingsPage, SettingsBtn = CreateTab("Settings", 12)
 CreateHorizontalSectionDivider(13)
-CreateCategoryHeader("INFO", 14)
-local ConfigsPage, ConfigsTabBtn = CreateTab("Configs", 15, "⚙")
+CreateCategoryHeader("CONFIGS", 14)
+local ConfigsPage, ConfigsTabBtn = CreateTab("Configs", 15)
 ConfigsTabBtn.LayoutOrder = 99
 
 local LogsCard, LogsTitle = CreateCard(UpdateLogsPage, "📋 Update Logs")
@@ -894,7 +894,7 @@ local function CreateColorSquares(parent)
     Container.LayoutOrder = 1
 
     local Label = Instance.new("TextLabel", Container)
-    Label.Size = UDim2.new(0.4, 0, 1, 0)
+    Label.Size = UDim2.new(0.3, 0, 1, 0)
     Label.BackgroundTransparency = 1
     Label.Text = "Box Color"
     Label.TextColor3 = Color3.fromRGB(190, 200, 220)
@@ -904,16 +904,17 @@ local function CreateColorSquares(parent)
     Label.ZIndex = 8
 
     local ColorRow = Instance.new("Frame", Container)
-    ColorRow.Size = UDim2.new(0.55, 0, 1, 0)
-    ColorRow.Position = UDim2.new(0.45, 0, 0, 0)
+    ColorRow.Size = UDim2.new(0.65, 0, 1, 0)
+    ColorRow.Position = UDim2.new(0.35, 0, 0, 0)
     ColorRow.BackgroundTransparency = 1
     ColorRow.ZIndex = 8
 
     local colors = {
         {color = Color3.fromRGB(255, 50, 50), x = 0},
-        {color = Color3.fromRGB(50, 255, 50), x = 32},
-        {color = Color3.fromRGB(50, 150, 255), x = 64},
-        {color = Color3.fromRGB(255, 255, 50), x = 96}
+        {color = Color3.fromRGB(50, 255, 50), x = 28},
+        {color = Color3.fromRGB(50, 150, 255), x = 56},
+        {color = Color3.fromRGB(255, 255, 50), x = 84},
+        {color = Color3.fromRGB(160, 50, 255), x = 112}
     }
 
     for _, data in ipairs(colors) do
@@ -1005,7 +1006,7 @@ UnsupLabel.TextXAlignment = Enum.TextXAlignment.Left
 UnsupLabel.ZIndex = 6
 UnsupLabel.LayoutOrder = 1
 
-local ConfigCard, ConfigTitle = CreateCard(ConfigsPage, "Configs")
+local ConfigCard, ConfigTitle = CreateCard(ConfigsPage, "Configurations")
 
 local ConfigInput = Instance.new("TextBox", ConfigCard)
 ConfigInput.Size = UDim2.new(1, -24, 0, 30)
@@ -1033,7 +1034,7 @@ BtnGrid.BackgroundTransparency = 1
 BtnGrid.ZIndex = 7
 local BGLayout = Instance.new("UIGridLayout", BtnGrid)
 BGLayout.CellSize = UDim2.new(0.5, -4, 0, 30)
-BGLayout.CellPadding = UDim2.new(0, 4)
+BGLayout.CellPadding = UDim2.new(0, 6)
 
 local function MakeConfigBtn(text)
     local b = Instance.new("TextButton", BtnGrid)
@@ -1398,9 +1399,7 @@ RunService.RenderStepped:Connect(function()
         if humanoid then
             humanoid.Animator = nil
         end
-    end
-
-    if _G.ZoDesync and LocalPlayer.Character then
+    end    if _G.ZoDesync and LocalPlayer.Character then
         local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then
             root.CFrame = root.CFrame + Vector3.new(0, 0.1, 0)
